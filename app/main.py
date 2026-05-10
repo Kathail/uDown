@@ -79,6 +79,30 @@ def _cache_put(session: str, url: str, entries: list[VideoEntry]) -> None:
     _RESOLVE_CACHE[_cache_key(session, url)] = (time.time(), entries)
 
 
+def _parse_urls(raw: str) -> list[str]:
+    """Split a multi-line input into deduped, stripped URL lines."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in raw.splitlines():
+        s = line.strip()
+        if s and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out
+
+
+def _resolve_many(urls: list[str]) -> list[VideoEntry]:
+    """Resolve each URL and concatenate. Raises ResolveError on the first failure
+    with the offending URL prepended to the reason."""
+    all_entries: list[VideoEntry] = []
+    for u in urls:
+        try:
+            all_entries.extend(resolve(u))
+        except ResolveError as e:
+            raise ResolveError(f"{u}: {e}") from e
+    return all_entries
+
+
 # ---- routes --------------------------------------------------------------
 
 
@@ -145,19 +169,26 @@ async def preflight(
     # require_session has already 401'd on a missing cookie.
     assert udown_session is not None
     body = await request.json()
-    url = body.get("url", "").strip()
-    if not url:
+    raw = body.get("url", "")
+    urls = _parse_urls(raw)
+    if not urls:
         raise HTTPException(status_code=400, detail="url is required")
     try:
-        entries = resolve(url)
+        entries = _resolve_many(urls)
     except ResolveError as e:
-        log.info("preflight failed: url=%r reason=%s", url, e)
+        log.info("preflight failed: urls=%d reason=%s", len(urls), e)
         raise HTTPException(status_code=400, detail=str(e)) from e
-    _cache_put(udown_session, url, entries)
-    title = entries[0].title if len(entries) == 1 else "playlist"
-    log.info("preflight ok: url=%r entry_count=%d", url, len(entries))
+    _cache_put(udown_session, raw, entries)
+    if len(urls) > 1 or len(entries) > 1:
+        title = "mixtape"
+    else:
+        title = entries[0].title
+    log.info(
+        "preflight ok: source_count=%d entry_count=%d", len(urls), len(entries)
+    )
     return JSONResponse({
         "entry_count": len(entries),
+        "source_count": len(urls),
         "suggested_filename": sanitize_filename(title) + ".zip",
     })
 
@@ -174,20 +205,24 @@ async def download(
     try:
         await asyncio.wait_for(sem.acquire(), timeout=wait)
     except asyncio.TimeoutError:
-        log.warning("download 503: semaphore exhausted url=%r", url)
+        log.warning("download 503: semaphore exhausted")
         raise HTTPException(status_code=503, detail="server busy, retry shortly")
 
     entries = _cache_get(udown_session, url)
     if entries is None:
+        urls = _parse_urls(url)
+        if not urls:
+            sem.release()
+            raise HTTPException(status_code=400, detail="url is required")
         try:
-            entries = resolve(url)
+            entries = _resolve_many(urls)
         except ResolveError as e:
             sem.release()
-            log.info("download 400: url=%r reason=%s", url, e)
+            log.info("download 400: urls=%d reason=%s", len(urls), e)
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     suggested = (
-        sanitize_filename(entries[0].title) if len(entries) == 1 else "playlist"
+        sanitize_filename(entries[0].title) if len(entries) == 1 else "mixtape"
     )
     ascii_fallback = re.sub(r"[^A-Za-z0-9._-]", "_", suggested) or "download"
     encoded = urllib.parse.quote(suggested, safe="")

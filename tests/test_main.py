@@ -10,6 +10,15 @@ from httpx import ASGITransport
 from app.resolver import VideoEntry
 
 
+@pytest.fixture(autouse=True)
+def _clear_resolve_cache():
+    """Reset the per-process resolve cache between tests."""
+    import app.main as m
+    m._RESOLVE_CACHE.clear()
+    yield
+    m._RESOLVE_CACHE.clear()
+
+
 @pytest.fixture
 def fake_resolve(monkeypatch):
     """Replace resolver.resolve with a callable returning configurable entries."""
@@ -21,8 +30,6 @@ def fake_resolve(monkeypatch):
         return list(state["entries"])
 
     import app.main as m
-    # Clear the resolve cache so stale entries from other tests don't interfere.
-    m._RESOLVE_CACHE.clear()
     monkeypatch.setattr(m, "resolve", _fake)
     return state
 
@@ -185,3 +192,100 @@ async def test_me_authenticated(client):
     await _login(client)
     r = await client.get("/me")
     assert r.status_code == 200
+
+
+# ---- bulk URL --------------------------------------------------------
+
+
+async def test_preflight_bulk_urls_returns_total_entry_count(client, monkeypatch):
+    """Two URLs separated by newlines: each resolves to one entry,
+    preflight reports total of two."""
+    import app.main as m
+
+    await _login(client)
+
+    by_url = {
+        "https://youtube.com/watch?v=a": [VideoEntry(id="a", webpage_url="https://youtube.com/watch?v=a", title="A")],
+        "https://youtube.com/watch?v=b": [VideoEntry(id="b", webpage_url="https://youtube.com/watch?v=b", title="B")],
+    }
+
+    def fake(url):
+        return list(by_url[url])
+
+    monkeypatch.setattr(m, "resolve", fake)
+
+    raw = "https://youtube.com/watch?v=a\nhttps://youtube.com/watch?v=b"
+    r = await client.post("/download/preflight", json={"url": raw})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["entry_count"] == 2
+    assert body["source_count"] == 2
+
+
+async def test_download_bulk_urls_streams_combined_zip(client, fake_pipeline, monkeypatch):
+    """Two URLs in the body produce one zip with both tracks."""
+    import io
+    import zipfile
+
+    import app.main as m
+
+    await _login(client)
+
+    by_url = {
+        "https://youtube.com/watch?v=a": [VideoEntry(id="a", webpage_url="https://youtube.com/watch?v=a", title="One")],
+        "https://youtube.com/watch?v=b": [VideoEntry(id="b", webpage_url="https://youtube.com/watch?v=b", title="Two")],
+    }
+
+    def fake(url):
+        return list(by_url[url])
+
+    monkeypatch.setattr(m, "resolve", fake)
+
+    raw = "https://youtube.com/watch?v=a\nhttps://youtube.com/watch?v=b"
+    r = await client.post("/download", data={"url": raw})
+    assert r.status_code == 200
+    zf = zipfile.ZipFile(io.BytesIO(r.content))
+    assert sorted(zf.namelist()) == ["One.mp3", "Two.mp3"]
+
+
+async def test_bulk_dedupes_duplicate_lines(client, monkeypatch):
+    """Pasting the same URL twice only resolves it once."""
+    import app.main as m
+
+    await _login(client)
+    calls = []
+
+    def fake(url):
+        calls.append(url)
+        return [VideoEntry(id="x", webpage_url=url, title="X")]
+
+    monkeypatch.setattr(m, "resolve", fake)
+
+    raw = "https://youtube.com/watch?v=x\nhttps://youtube.com/watch?v=x\n"
+    r = await client.post("/download/preflight", json={"url": raw})
+    assert r.status_code == 200
+    assert r.json()["entry_count"] == 1
+    assert len(calls) == 1
+
+
+async def test_bulk_one_bad_url_fails_with_url_in_message(client, monkeypatch):
+    """If any URL in the bulk fails to resolve, the whole request 400s with
+    the offending URL in the error message."""
+    import app.main as m
+    from app.resolver import ResolveError
+
+    await _login(client)
+
+    def fake(url):
+        if "bad" in url:
+            raise ResolveError("hostname not allowed")
+        return [VideoEntry(id="ok", webpage_url=url, title="ok")]
+
+    monkeypatch.setattr(m, "resolve", fake)
+
+    raw = "https://youtube.com/watch?v=ok\nhttps://bad.example.com/abc"
+    r = await client.post("/download/preflight", json={"url": raw})
+    assert r.status_code == 400
+    detail = r.json()["detail"]
+    assert "bad.example.com" in detail
+    assert "hostname not allowed" in detail

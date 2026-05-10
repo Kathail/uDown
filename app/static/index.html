@@ -3,103 +3,100 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>uDown — extract audio</title>
+    <title>uDown — terminal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=7">
 </head>
-<body>
-    <div class="grain" aria-hidden="true"></div>
-    <div class="rules" aria-hidden="true"></div>
+<body data-state="ready">
+    <div class="crt-overlay" aria-hidden="true"></div>
 
-    <header class="masthead">
-        <a class="brand" href="/">
-            <span class="brand__arrow" aria-hidden="true">↓</span><span class="brand__word">DOWN</span>
-        </a>
-        <div class="masthead__meta">
-            <span class="meta-line meta-clock" id="meta-clock"><span class="meta-clock__h">--</span><span class="meta-clock__sep">:</span><span class="meta-clock__m">--</span><span class="meta-clock__sep">:</span><span class="meta-clock__s">--</span></span>
-            <span class="meta-line meta-divider" aria-hidden="true">·</span>
-            <span class="meta-line meta-status" id="meta-status" data-state="ready"><span class="meta-status__dot" aria-hidden="true"></span><span class="meta-status__text">READY</span></span>
-            <span class="meta-line meta-divider" aria-hidden="true">·</span>
-            <span class="meta-line">320KBPS · MP3</span>
-        </div>
-    </header>
+    <div class="terminal">
+        <header class="term-bar">
+            <span class="term-bar__dots" aria-hidden="true">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </span>
+            <span class="term-bar__title">udown@host: ~/mixtape — 80x24</span>
+            <span class="term-bar__meta">
+                <span class="meta-clock" id="meta-clock">
+                    <span class="meta-clock__h">00</span><span class="meta-clock__sep">:</span><span class="meta-clock__m">00</span><span class="meta-clock__sep">:</span><span class="meta-clock__s">00</span>
+                </span>
+                <span class="meta-status" id="meta-status" data-state="ready">
+                    <span class="meta-status__dot" aria-hidden="true"></span>
+                    <span class="meta-status__text">ready</span>
+                </span>
+            </span>
+        </header>
 
-    <main class="stage">
-        <!-- Logged-out: password -->
-        <section id="login-section" class="hidden panel">
-            <div class="step">
-                <span class="step__numeral">01</span>
-                <span class="step__label">access</span>
+        <main class="term-body">
+            <pre class="ascii" aria-hidden="true">
+ _   _ ____   _____        ___   _
+| | | |  _ \ / _ \ \      / / \ | |
+| | | | | | | | | \ \ /\ / /|  \| |
+| |_| | |_| | |_| |\ V  V / | |\  |
+ \___/|____/ \___/  \_/\_/  |_| \_|        </pre>
+
+            <div class="boot" id="boot">
+                <p>uDown v0.1 — terminal interface</p>
+                <p>(c) self-hosted · be kind, rewind</p>
+                <p>type or paste a youtube URL below to begin.</p>
             </div>
-            <div class="rule rule--heavy" aria-hidden="true"><span class="rule__ticks"></span></div>
-            <h1 class="lede">
-                authentication
-                <em>required.</em>
-            </h1>
-            <div class="rule rule--hair" aria-hidden="true"></div>
 
-            <form id="login-form" method="post" action="/login" class="form">
-                <label class="field">
-                    <span class="field__label">passphrase</span>
-                    <input type="password" name="password" placeholder="•••••••" required autofocus>
-                </label>
-                <button type="submit" class="btn btn--accent">
-                    <span class="btn__caret" aria-hidden="true">▶</span>
-                    <span class="btn__label">unlock</span>
-                </button>
-                <p id="login-error" class="msg msg--error hidden" role="alert"></p>
+            <!-- Logged-out -->
+            <section id="login-section" class="hidden panel">
+                <p class="prompt"><span class="prompt__sigil">$</span> auth required</p>
+
+                <form id="login-form" method="post" action="/login" class="form">
+                    <label class="field">
+                        <span class="field__label"><span class="field__sigil">›</span> passphrase</span>
+                        <input type="password" name="password" placeholder="········" required autofocus>
+                    </label>
+                    <button type="submit" class="btn">unlock</button>
+                    <p id="login-error" class="msg msg--error hidden" role="alert"></p>
+                </form>
+            </section>
+
+            <!-- Logged-in -->
+            <section id="download-section" class="hidden panel">
+                <p class="prompt"><span class="prompt__sigil">$</span> udown extract --codec=mp3 --rate=320</p>
+
+                <form id="download-form" class="form">
+                    <label class="field">
+                        <span class="field__label">
+                            <span class="field__sigil">›</span> source
+                            <span class="field__hint"># one or more urls, one per line</span>
+                        </span>
+                        <textarea id="url-input" name="url" placeholder="https://youtube.com/…&#10;https://youtu.be/…" required rows="5"></textarea>
+                    </label>
+                    <button type="submit" id="download-btn" class="btn btn--accent">[ run ▶ ] extract mp3</button>
+                    <p id="status" class="msg msg--status hidden" role="status"></p>
+                    <p id="error" class="msg msg--error hidden" role="alert"></p>
+                </form>
+
+                <div class="logbar">
+                    <span class="logbar__label">─ session log ─────────────────────────────</span>
+                    <p class="log-line">> session active</p>
+                    <p class="log-line log-line--dim">> awaiting input...</p>
+                </div>
+
+                <form id="logout-form" method="post" action="/logout" class="logout">
+                    <button type="submit">$ exit</button>
+                </form>
+            </section>
+
+            <form id="hidden-download" method="post" action="/download" class="hidden" aria-hidden="true">
+                <input type="hidden" name="url" id="hidden-url">
             </form>
-        </section>
+        </main>
 
-        <!-- Logged-in: URL -->
-        <section id="download-section" class="hidden panel">
-            <div class="step">
-                <span class="step__numeral">02</span>
-                <span class="step__label">extract</span>
-            </div>
-            <div class="rule rule--heavy" aria-hidden="true"><span class="rule__ticks"></span></div>
-            <h1 class="lede">
-                a small machine
-                for lifting <em>audio</em>
-                off moving pictures.
-            </h1>
-            <div class="rule rule--hair" aria-hidden="true"></div>
+        <footer class="term-footer">
+            <span class="term-footer__cell">^C exit</span>
+            <span class="term-footer__cell">^L clear</span>
+            <span class="term-footer__cell term-footer__cell--end">v0.1</span>
+        </footer>
+    </div>
 
-            <form id="download-form" class="form">
-                <label class="field">
-                    <span class="field__label">source</span>
-                    <input id="url-input" type="url" name="url" placeholder="https://youtube.com/…" required>
-                </label>
-                <button type="submit" id="download-btn" class="btn btn--accent btn--big">
-                    <span class="btn__caret" aria-hidden="true">▶</span>
-                    <span class="btn__label">extract mp3 · 320kbps</span>
-                </button>
-                <p id="status" class="msg msg--status hidden" role="status"></p>
-                <p id="error" class="msg msg--error hidden" role="alert"></p>
-            </form>
-
-            <div class="rule rule--thin" aria-hidden="true"></div>
-            <form id="logout-form" method="post" action="/logout" class="logout">
-                <button type="submit">— sign out</button>
-            </form>
-        </section>
-
-        <!-- Hidden form to drive the streaming download -->
-        <form id="hidden-download" method="post" action="/download" class="hidden" aria-hidden="true">
-            <input type="hidden" name="url" id="hidden-url">
-        </form>
-    </main>
-
-    <footer class="footer">
-        <span>uDown</span>
-        <span class="dot" aria-hidden="true">·</span>
-        <span>self-hosted</span>
-        <span class="dot" aria-hidden="true">·</span>
-        <span>personal scale</span>
-    </footer>
-
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=7"></script>
 </body>
 </html>
