@@ -3,18 +3,32 @@
     const downloadSection = document.getElementById("download-section");
     const loginError = document.getElementById("login-error");
 
-    // Live timestamp in the masthead — broadcast-clock vibe.
+    // ---- masthead clock — broadcast tick, separate spans so the colons can blink ----
     const clockEl = document.getElementById("meta-clock");
+    const clockH = clockEl?.querySelector(".meta-clock__h");
+    const clockM = clockEl?.querySelector(".meta-clock__m");
+    const clockS = clockEl?.querySelector(".meta-clock__s");
+    const pad = (n) => String(n).padStart(2, "0");
     function tick() {
-        if (!clockEl) return;
+        if (!clockH) return;
         const d = new Date();
-        const pad = (n) => String(n).padStart(2, "0");
-        clockEl.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        clockH.textContent = pad(d.getHours());
+        clockM.textContent = pad(d.getMinutes());
+        clockS.textContent = pad(d.getSeconds());
     }
     tick();
     setInterval(tick, 1000);
 
-    // Initial state — quick GET /me. Fall back to login on network error.
+    // ---- masthead status indicator ----
+    const statusBadge = document.getElementById("meta-status");
+    const statusBadgeText = statusBadge?.querySelector(".meta-status__text");
+    function setBadge(state, text) {
+        if (!statusBadge) return;
+        statusBadge.dataset.state = state;
+        if (statusBadgeText && text) statusBadgeText.textContent = text;
+    }
+
+    // ---- initial state ----
     fetch("/me", { credentials: "same-origin" })
         .then((r) => {
             if (r.status === 200) {
@@ -25,28 +39,37 @@
         })
         .catch(() => {
             loginSection.classList.remove("hidden");
+            setBadge("error", "OFFLINE");
         });
 
-    // Login: handle errors inline so the page doesn't navigate away.
+    // ---- login ----
     document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         loginError.classList.add("hidden");
+        setBadge("working", "AUTH");
         const fd = new FormData(e.target);
-        const r = await fetch("/login", {
-            method: "POST",
-            body: fd,
-            credentials: "same-origin",
-        });
-        if (r.ok) {
-            location.reload();
-        } else {
-            loginError.textContent = "incorrect passphrase";
+        try {
+            const r = await fetch("/login", {
+                method: "POST",
+                body: fd,
+                credentials: "same-origin",
+            });
+            if (r.ok) {
+                setBadge("done", "OK");
+                location.reload();
+            } else {
+                setBadge("error", "DENIED");
+                loginError.textContent = "incorrect passphrase";
+                loginError.classList.remove("hidden");
+            }
+        } catch (err) {
+            setBadge("error", "OFFLINE");
+            loginError.textContent = "network error";
             loginError.classList.remove("hidden");
         }
     });
 
-    // Download: preflight (cheap, returns inline errors) then submit the hidden
-    // form so the browser handles the streaming zip response natively.
+    // ---- download flow ----
     const dlForm = document.getElementById("download-form");
     const dlBtn = document.getElementById("download-btn");
     const status = document.getElementById("status");
@@ -60,18 +83,30 @@
         const url = document.getElementById("url-input").value;
 
         dlBtn.disabled = true;
+        setBadge("working", "RESOLVE");
         status.textContent = "resolving source…";
         status.classList.remove("hidden");
 
-        const r = await fetch("/download/preflight", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify({ url }),
-        });
+        let r;
+        try {
+            r = await fetch("/download/preflight", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify({ url }),
+            });
+        } catch (err) {
+            setBadge("error", "OFFLINE");
+            error.textContent = "network error";
+            error.classList.remove("hidden");
+            status.classList.add("hidden");
+            dlBtn.disabled = false;
+            return;
+        }
 
         if (!r.ok) {
             const body = await r.json().catch(() => ({}));
+            setBadge("error", "ERROR");
             error.textContent = (body.detail || "could not resolve url").toLowerCase();
             error.classList.remove("hidden");
             status.classList.add("hidden");
@@ -81,6 +116,7 @@
 
         const info = await r.json();
         const noun = info.entry_count === 1 ? "track" : "tracks";
+        setBadge("working", "STREAM");
         status.textContent = `preparing ${info.entry_count} ${noun} · streaming zip…`;
 
         document.getElementById("hidden-url").value = url;
@@ -88,7 +124,11 @@
 
         setTimeout(() => {
             dlBtn.disabled = false;
+            setBadge("done", "DONE");
             status.textContent = "stream initiated · check your downloads";
         }, 1500);
+
+        // Drift back to READY after a longer beat.
+        setTimeout(() => setBadge("ready", "READY"), 6000);
     });
 })();

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <div class="grain" aria-hidden="true"></div>
@@ -18,9 +18,11 @@
             <span class="brand__arrow" aria-hidden="true">↓</span><span class="brand__word">DOWN</span>
         </a>
         <div class="masthead__meta">
-            <span class="meta-line" id="meta-clock">— : — : —</span>
+            <span class="meta-line meta-clock" id="meta-clock"><span class="meta-clock__h">--</span><span class="meta-clock__sep">:</span><span class="meta-clock__m">--</span><span class="meta-clock__sep">:</span><span class="meta-clock__s">--</span></span>
             <span class="meta-line meta-divider" aria-hidden="true">·</span>
-            <span class="meta-line">320 KBPS · MP3</span>
+            <span class="meta-line meta-status" id="meta-status" data-state="ready"><span class="meta-status__dot" aria-hidden="true"></span><span class="meta-status__text">READY</span></span>
+            <span class="meta-line meta-divider" aria-hidden="true">·</span>
+            <span class="meta-line">320KBPS · MP3</span>
         </div>
     </header>
 
@@ -31,12 +33,12 @@
                 <span class="step__numeral">01</span>
                 <span class="step__label">access</span>
             </div>
-            <hr class="rule">
+            <div class="rule rule--heavy" aria-hidden="true"><span class="rule__ticks"></span></div>
             <h1 class="lede">
                 authentication
                 <em>required.</em>
             </h1>
-            <hr class="rule">
+            <div class="rule rule--hair" aria-hidden="true"></div>
 
             <form id="login-form" method="post" action="/login" class="form">
                 <label class="field">
@@ -57,13 +59,13 @@
                 <span class="step__numeral">02</span>
                 <span class="step__label">extract</span>
             </div>
-            <hr class="rule">
+            <div class="rule rule--heavy" aria-hidden="true"><span class="rule__ticks"></span></div>
             <h1 class="lede">
                 a small machine
                 for lifting <em>audio</em>
                 off moving pictures.
             </h1>
-            <hr class="rule">
+            <div class="rule rule--hair" aria-hidden="true"></div>
 
             <form id="download-form" class="form">
                 <label class="field">
@@ -78,7 +80,7 @@
                 <p id="error" class="msg msg--error hidden" role="alert"></p>
             </form>
 
-            <hr class="rule rule--thin">
+            <div class="rule rule--thin" aria-hidden="true"></div>
             <form id="logout-form" method="post" action="/logout" class="logout">
                 <button type="submit">— sign out</button>
             </form>
@@ -98,6 +100,6 @@
         <span>personal scale</span>
     </footer>
 
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 </html>
