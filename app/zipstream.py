@@ -68,11 +68,27 @@ async def _empty_iter() -> AsyncIterator[bytes]:
     yield  # make it an async generator
 
 
-async def _chain(first_chunk: bytes, rest: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
-    """Yield first_chunk then all chunks from rest."""
+async def _safe_chain(
+    first_chunk: bytes,
+    rest: AsyncIterator[bytes],
+    entry: VideoEntry,
+    failed: list[tuple[str, str]],
+) -> AsyncIterator[bytes]:
+    """Yield first_chunk then all chunks from rest.
+
+    If `rest` raises mid-stream, record the failure and stop yielding. The
+    zip entry closes cleanly with whatever bytes were already streamed; the
+    rest of the playlist continues. The partial entry is also recorded in
+    `_failed.txt` so the user can see what happened.
+    """
     yield first_chunk
-    async for chunk in rest:
-        yield chunk
+    try:
+        async for chunk in rest:
+            yield chunk
+    except Exception as e:
+        failed.append((entry.title, f"mid-stream: {e}"))
+        log.warning("zipstream: %s failed mid-stream: %s", entry.title, e)
+        return
 
 
 async def stream_zip(
@@ -107,7 +123,7 @@ async def stream_zip(
                 # Edge case: pipeline yielded nothing (StopAsyncIteration immediately)
                 data_iter = _empty_iter()
             else:
-                data_iter = _chain(first_chunk, rest_iter)
+                data_iter = _safe_chain(first_chunk, rest_iter, entry, failed)
 
             yield (
                 filename,

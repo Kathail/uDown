@@ -101,3 +101,41 @@ async def test_stream_zip_dedupes_filenames():
     zf = zipfile.ZipFile(io.BytesIO(body))
     names = sorted(zf.namelist())
     assert names == ["Same (2).mp3", "Same.mp3"]
+
+
+async def test_stream_zip_mid_stream_failure_closes_entry_and_continues():
+    """A pipeline that yields chunks then raises mid-stream:
+    - the partial file entry closes cleanly with the bytes already streamed
+    - the failure is recorded in _failed.txt
+    - subsequent entries proceed
+    """
+    entries = _entries("Good", "Flaky", "Also Good")
+
+    async def pipeline(entry):
+        if entry.id == "1":
+            yield b"first-good-chunk-"
+            yield b"second-chunk-"
+            raise RuntimeError("network reset")
+        yield f"audio-of-{entry.id}".encode()
+
+    body = await _collect(stream_zip(entries, pipeline=pipeline))
+    zf = zipfile.ZipFile(io.BytesIO(body))
+    names = set(zf.namelist())
+
+    assert "Good.mp3" in names
+    assert "Also Good.mp3" in names
+    assert "Flaky.mp3" in names  # partial entry preserved
+    assert "_failed.txt" in names
+
+    # Partial entry contains what was streamed before the exception.
+    flaky = zf.read("Flaky.mp3")
+    assert flaky == b"first-good-chunk-second-chunk-"
+
+    # Successful entries are unaffected.
+    assert zf.read("Good.mp3") == b"audio-of-0"
+    assert zf.read("Also Good.mp3") == b"audio-of-2"
+
+    # Failure is recorded.
+    failed = zf.read("_failed.txt").decode()
+    assert "Flaky" in failed
+    assert "network reset" in failed
