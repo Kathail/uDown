@@ -115,6 +115,21 @@ async def startup() -> None:
     if len(secret) < 32:
         raise RuntimeError("SESSION_SECRET env var must be at least 32 chars")
 
+    # If YT_COOKIES is set (cookies file contents as a multi-line env var),
+    # materialize it to disk and point YT_COOKIES_FILE at the path. Lets you
+    # ship cookies on platforms like Railway without a volume mount.
+    yt_cookies = os.environ.get("YT_COOKIES")
+    if yt_cookies and not os.environ.get("YT_COOKIES_FILE"):
+        cookie_path = "/tmp/yt-cookies.txt"
+        try:
+            with open(cookie_path, "w") as f:
+                f.write(yt_cookies)
+            os.chmod(cookie_path, 0o600)
+            os.environ["YT_COOKIES_FILE"] = cookie_path
+            log.info("YT_COOKIES env materialized to %s (%d bytes)", cookie_path, len(yt_cookies))
+        except OSError as e:
+            log.error("could not write YT_COOKIES file: %s", e)
+
     # ffmpeg probe — log a warning but don't crash if missing in dev.
     if os.environ.get("UDOWN_REQUIRE_FFMPEG", "1") == "1":
         import shutil
