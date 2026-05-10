@@ -1,6 +1,6 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
-yt-dlp==2024.12.13
+yt-dlp>=2026.3.17
 itsdangerous==2.2.0
 stream-zip==0.0.83
 python-multipart==0.0.20
