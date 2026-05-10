@@ -3,57 +3,100 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>uDown</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>uDown — extract audio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen flex items-center justify-center p-4">
-    <main class="w-full max-w-md space-y-6">
-        <header class="text-center">
-            <h1 class="text-3xl font-semibold tracking-tight">uDown</h1>
-            <p class="text-zinc-400 text-sm mt-1">YouTube → MP3</p>
-        </header>
+<body>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="rules" aria-hidden="true"></div>
 
+    <header class="masthead">
+        <a class="brand" href="/">
+            <span class="brand__arrow" aria-hidden="true">↓</span><span class="brand__word">DOWN</span>
+        </a>
+        <div class="masthead__meta">
+            <span class="meta-line" id="meta-clock">— : — : —</span>
+            <span class="meta-line meta-divider" aria-hidden="true">·</span>
+            <span class="meta-line">320 KBPS · MP3</span>
+        </div>
+    </header>
+
+    <main class="stage">
         <!-- Logged-out: password -->
-        <section id="login-section" class="hidden">
-            <form id="login-form" method="post" action="/login" class="space-y-3">
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    required
-                    class="w-full rounded-md bg-zinc-900 border border-zinc-800 px-4 py-2 text-zinc-100 focus:border-zinc-500 focus:outline-none"
-                >
-                <button type="submit" class="w-full rounded-md bg-zinc-100 text-zinc-900 font-medium py-2 hover:bg-white">Sign in</button>
-                <p id="login-error" class="text-red-400 text-sm hidden"></p>
+        <section id="login-section" class="hidden panel">
+            <div class="step">
+                <span class="step__numeral">01</span>
+                <span class="step__label">access</span>
+            </div>
+            <hr class="rule">
+            <h1 class="lede">
+                authentication
+                <em>required.</em>
+            </h1>
+            <hr class="rule">
+
+            <form id="login-form" method="post" action="/login" class="form">
+                <label class="field">
+                    <span class="field__label">passphrase</span>
+                    <input type="password" name="password" placeholder="•••••••" required autofocus>
+                </label>
+                <button type="submit" class="btn btn--accent">
+                    <span class="btn__caret" aria-hidden="true">▶</span>
+                    <span class="btn__label">unlock</span>
+                </button>
+                <p id="login-error" class="msg msg--error hidden" role="alert"></p>
             </form>
         </section>
 
         <!-- Logged-in: URL -->
-        <section id="download-section" class="hidden">
-            <form id="download-form" class="space-y-3">
-                <input
-                    id="url-input"
-                    type="url"
-                    name="url"
-                    placeholder="https://youtube.com/..."
-                    required
-                    class="w-full rounded-md bg-zinc-900 border border-zinc-800 px-4 py-2 text-zinc-100 focus:border-zinc-500 focus:outline-none"
-                >
-                <button type="submit" id="download-btn" class="w-full rounded-md bg-zinc-100 text-zinc-900 font-medium py-2 hover:bg-white">Download MP3</button>
-                <p id="status" class="text-zinc-400 text-sm hidden"></p>
-                <p id="error" class="text-red-400 text-sm hidden"></p>
+        <section id="download-section" class="hidden panel">
+            <div class="step">
+                <span class="step__numeral">02</span>
+                <span class="step__label">extract</span>
+            </div>
+            <hr class="rule">
+            <h1 class="lede">
+                a small machine
+                for lifting <em>audio</em>
+                off moving pictures.
+            </h1>
+            <hr class="rule">
+
+            <form id="download-form" class="form">
+                <label class="field">
+                    <span class="field__label">source</span>
+                    <input id="url-input" type="url" name="url" placeholder="https://youtube.com/…" required>
+                </label>
+                <button type="submit" id="download-btn" class="btn btn--accent btn--big">
+                    <span class="btn__caret" aria-hidden="true">▶</span>
+                    <span class="btn__label">extract mp3 · 320kbps</span>
+                </button>
+                <p id="status" class="msg msg--status hidden" role="status"></p>
+                <p id="error" class="msg msg--error hidden" role="alert"></p>
             </form>
-            <form id="logout-form" method="post" action="/logout" class="mt-6 text-center">
-                <button type="submit" class="text-zinc-500 hover:text-zinc-300 text-sm">Sign out</button>
+
+            <hr class="rule rule--thin">
+            <form id="logout-form" method="post" action="/logout" class="logout">
+                <button type="submit">— sign out</button>
             </form>
         </section>
 
         <!-- Hidden form to drive the streaming download -->
-        <form id="hidden-download" method="post" action="/download" class="hidden">
+        <form id="hidden-download" method="post" action="/download" class="hidden" aria-hidden="true">
             <input type="hidden" name="url" id="hidden-url">
         </form>
     </main>
+
+    <footer class="footer">
+        <span>uDown</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <span>self-hosted</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <span>personal scale</span>
+    </footer>
 
     <script src="/static/app.js"></script>
 </body>

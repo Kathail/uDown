@@ -3,19 +3,34 @@
     const downloadSection = document.getElementById("download-section");
     const loginError = document.getElementById("login-error");
 
-    // Initial state — server tells us via a body data attribute or we just check
-    // whether a session cookie is present. We'll do a quick GET /me.
-    fetch("/me", { credentials: "same-origin" }).then((r) => {
-        if (r.status === 200) {
-            downloadSection.classList.remove("hidden");
-        } else {
-            loginSection.classList.remove("hidden");
-        }
-    });
+    // Live timestamp in the masthead — broadcast-clock vibe.
+    const clockEl = document.getElementById("meta-clock");
+    function tick() {
+        if (!clockEl) return;
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        clockEl.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    tick();
+    setInterval(tick, 1000);
 
-    // Login form: handle errors inline (default form post would replace the page).
+    // Initial state — quick GET /me. Fall back to login on network error.
+    fetch("/me", { credentials: "same-origin" })
+        .then((r) => {
+            if (r.status === 200) {
+                downloadSection.classList.remove("hidden");
+            } else {
+                loginSection.classList.remove("hidden");
+            }
+        })
+        .catch(() => {
+            loginSection.classList.remove("hidden");
+        });
+
+    // Login: handle errors inline so the page doesn't navigate away.
     document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
+        loginError.classList.add("hidden");
         const fd = new FormData(e.target);
         const r = await fetch("/login", {
             method: "POST",
@@ -25,13 +40,13 @@
         if (r.ok) {
             location.reload();
         } else {
-            loginError.textContent = "Incorrect password";
+            loginError.textContent = "incorrect passphrase";
             loginError.classList.remove("hidden");
         }
     });
 
-    // Download flow: preflight first (so we can show errors inline), then submit
-    // the hidden form so the browser handles the streaming response natively.
+    // Download: preflight (cheap, returns inline errors) then submit the hidden
+    // form so the browser handles the streaming zip response natively.
     const dlForm = document.getElementById("download-form");
     const dlBtn = document.getElementById("download-btn");
     const status = document.getElementById("status");
@@ -45,7 +60,7 @@
         const url = document.getElementById("url-input").value;
 
         dlBtn.disabled = true;
-        status.textContent = "Resolving…";
+        status.textContent = "resolving source…";
         status.classList.remove("hidden");
 
         const r = await fetch("/download/preflight", {
@@ -57,7 +72,7 @@
 
         if (!r.ok) {
             const body = await r.json().catch(() => ({}));
-            error.textContent = body.detail || "Could not resolve URL";
+            error.textContent = (body.detail || "could not resolve url").toLowerCase();
             error.classList.remove("hidden");
             status.classList.add("hidden");
             dlBtn.disabled = false;
@@ -65,19 +80,15 @@
         }
 
         const info = await r.json();
-        status.textContent = `Preparing your download (${info.entry_count} ${
-            info.entry_count === 1 ? "track" : "tracks"
-        })…`;
+        const noun = info.entry_count === 1 ? "track" : "tracks";
+        status.textContent = `preparing ${info.entry_count} ${noun} · streaming zip…`;
 
-        // Trigger streaming download via hidden form.
         document.getElementById("hidden-url").value = url;
         document.getElementById("hidden-download").submit();
 
-        // Re-enable after a short delay (the page doesn't navigate, but the
-        // form submit kicks off the download).
         setTimeout(() => {
             dlBtn.disabled = false;
-            status.textContent = "Download started. You can submit another URL.";
+            status.textContent = "stream initiated · check your downloads";
         }, 1500);
     });
 })();
