@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=VT323&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=7">
+    <link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 <body data-state="ready">
     <div class="crt-overlay" aria-hidden="true"></div>
@@ -61,6 +61,25 @@
             <section id="download-section" class="hidden panel">
                 <p class="prompt"><span class="prompt__sigil">$</span> udown extract --codec=mp3 --rate=320</p>
 
+                <details id="cookies-panel" class="form" style="margin-bottom: 0.75rem;">
+                    <summary>
+                        <span class="field__sigil">›</span>
+                        cookies <span id="cookies-status" class="field__hint">checking…</span>
+                    </summary>
+                    <p class="field__hint" style="margin: 0.5rem 0;">
+                        # paste your youtube cookies (netscape format from a logged-in tab).
+                        # required from cloud hosts; export with a "cookies.txt" browser extension.
+                    </p>
+                    <form id="cookies-form" class="form">
+                        <textarea id="cookies-input" name="cookies" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com  TRUE  /  TRUE  …" rows="6" required></textarea>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="submit" class="btn">[ save cookies ]</button>
+                            <button type="button" id="cookies-clear" class="btn">[ clear ]</button>
+                        </div>
+                        <p id="cookies-msg" class="msg hidden" role="status"></p>
+                    </form>
+                </details>
+
                 <form id="download-form" class="form">
                     <label class="field">
                         <span class="field__label">
@@ -97,6 +116,6 @@
         </footer>
     </div>
 
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=8"></script>
 </body>
 </html>

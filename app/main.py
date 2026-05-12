@@ -115,21 +115,6 @@ async def startup() -> None:
     if len(secret) < 32:
         raise RuntimeError("SESSION_SECRET env var must be at least 32 chars")
 
-    # If YT_COOKIES is set (cookies file contents as a multi-line env var),
-    # materialize it to disk and point YT_COOKIES_FILE at the path. Lets you
-    # ship cookies on platforms like Railway without a volume mount.
-    yt_cookies = os.environ.get("YT_COOKIES")
-    if yt_cookies and not os.environ.get("YT_COOKIES_FILE"):
-        cookie_path = "/tmp/yt-cookies.txt"
-        try:
-            with open(cookie_path, "w") as f:
-                f.write(yt_cookies)
-            os.chmod(cookie_path, 0o600)
-            os.environ["YT_COOKIES_FILE"] = cookie_path
-            log.info("YT_COOKIES env materialized to %s (%d bytes)", cookie_path, len(yt_cookies))
-        except OSError as e:
-            log.error("could not write YT_COOKIES file: %s", e)
-
     # ffmpeg probe — log a warning but don't crash if missing in dev.
     if os.environ.get("UDOWN_REQUIRE_FFMPEG", "1") == "1":
         import shutil
@@ -173,6 +158,66 @@ async def logout() -> Response:
     response = RedirectResponse(url="/", status_code=303)
     response.delete_cookie(SESSION_COOKIE_NAME)
     return response
+
+
+# Runtime YouTube-cookies upload. Each user (or session) pastes their own
+# Netscape-format cookies file; we persist it to disk and point yt-dlp at it
+# via YT_COOKIES_FILE. yt-dlp rotates the file in place on each call.
+COOKIES_PATH = "/tmp/yt-cookies.txt"
+
+
+@app.get("/cookies/status")
+async def cookies_status(_: None = Depends(require_session)) -> Response:
+    path = os.environ.get("YT_COOKIES_FILE") or COOKIES_PATH
+    try:
+        size = Path(path).stat().st_size
+        loaded = size > 0
+    except OSError:
+        loaded, size = False, 0
+    return JSONResponse({"loaded": loaded, "bytes": size})
+
+
+@app.post("/cookies")
+async def set_cookies(
+    request: Request,
+    _: None = Depends(require_session),
+) -> Response:
+    body = await request.json()
+    raw = (body.get("cookies") or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="cookies body is empty")
+    if not raw.startswith("# Netscape HTTP Cookie File"):
+        raise HTTPException(
+            status_code=400,
+            detail="not a Netscape-format cookies file (must start with '# Netscape HTTP Cookie File')",
+        )
+    if ".youtube.com" not in raw:
+        raise HTTPException(
+            status_code=400,
+            detail="no .youtube.com cookies found — export from a logged-in YouTube tab",
+        )
+    try:
+        with open(COOKIES_PATH, "w") as f:
+            f.write(raw)
+        os.chmod(COOKIES_PATH, 0o600)
+    except OSError as e:
+        log.error("could not write cookies file: %s", e)
+        raise HTTPException(status_code=500, detail="could not persist cookies") from e
+    os.environ["YT_COOKIES_FILE"] = COOKIES_PATH
+    log.info("cookies uploaded: %d bytes", len(raw))
+    return JSONResponse({"ok": True, "bytes": len(raw)})
+
+
+@app.delete("/cookies")
+async def clear_cookies(_: None = Depends(require_session)) -> Response:
+    path = os.environ.get("YT_COOKIES_FILE") or COOKIES_PATH
+    try:
+        Path(path).unlink(missing_ok=True)
+    except OSError as e:
+        log.warning("could not delete cookies file: %s", e)
+    os.environ.pop("YT_COOKIES_FILE", None)
+    log.info("cookies cleared")
+    return JSONResponse({"ok": True})
 
 
 @app.post("/download/preflight")

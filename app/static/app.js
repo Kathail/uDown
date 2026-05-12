@@ -33,6 +33,7 @@
         .then((r) => {
             if (r.status === 200) {
                 downloadSection.classList.remove("hidden");
+                refreshCookiesStatus();
             } else {
                 loginSection.classList.remove("hidden");
             }
@@ -41,6 +42,79 @@
             loginSection.classList.remove("hidden");
             setBadge("error", "OFFLINE");
         });
+
+    // ---- cookies panel ----
+    const cookiesStatusEl = document.getElementById("cookies-status");
+    const cookiesPanel = document.getElementById("cookies-panel");
+    const cookiesForm = document.getElementById("cookies-form");
+    const cookiesInput = document.getElementById("cookies-input");
+    const cookiesMsg = document.getElementById("cookies-msg");
+    const cookiesClearBtn = document.getElementById("cookies-clear");
+
+    async function refreshCookiesStatus() {
+        try {
+            const r = await fetch("/cookies/status", { credentials: "same-origin" });
+            const j = await r.json();
+            if (j.loaded) {
+                cookiesStatusEl.textContent = `✓ loaded (${j.bytes} bytes)`;
+                cookiesStatusEl.style.color = "";
+            } else {
+                cookiesStatusEl.textContent = "✗ not set — paste below to enable youtube downloads";
+                cookiesStatusEl.style.color = "var(--accent, #ff9)";
+                cookiesPanel?.setAttribute("open", "");
+            }
+        } catch {
+            cookiesStatusEl.textContent = "? unknown";
+        }
+    }
+
+    cookiesForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        cookiesMsg.classList.add("hidden");
+        cookiesMsg.classList.remove("msg--error");
+        const cookies = cookiesInput.value;
+        try {
+            const r = await fetch("/cookies", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify({ cookies }),
+            });
+            const j = await r.json();
+            if (r.ok) {
+                cookiesMsg.textContent = `saved · ${j.bytes} bytes`;
+                cookiesMsg.classList.add("msg--status");
+                cookiesMsg.classList.remove("hidden");
+                cookiesInput.value = "";
+                cookiesPanel?.removeAttribute("open");
+                refreshCookiesStatus();
+            } else {
+                cookiesMsg.textContent = (j.detail || "save failed").toLowerCase();
+                cookiesMsg.classList.add("msg--error");
+                cookiesMsg.classList.remove("hidden");
+            }
+        } catch {
+            cookiesMsg.textContent = "network error";
+            cookiesMsg.classList.add("msg--error");
+            cookiesMsg.classList.remove("hidden");
+        }
+    });
+
+    cookiesClearBtn?.addEventListener("click", async () => {
+        cookiesMsg.classList.add("hidden");
+        try {
+            const r = await fetch("/cookies", {
+                method: "DELETE",
+                credentials: "same-origin",
+            });
+            if (r.ok) {
+                cookiesInput.value = "";
+                refreshCookiesStatus();
+            }
+        } catch {
+            // ignore
+        }
+    });
 
     // ---- login ----
     document.getElementById("login-form").addEventListener("submit", async (e) => {
