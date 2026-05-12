@@ -33,6 +33,27 @@ docker run -p 8000:8000 \
   udown
 ```
 
+## Running on someone else's Linux box
+
+Pre-built images are published to GitHub Container Registry on every push to
+`main` (see `.github/workflows/docker.yml`). The image must be made **public**
+once via the GitHub UI (Settings → Packages → udown → Change visibility) before
+unauthenticated pulls work.
+
+After that, anyone on Linux/macOS with Docker installed can run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Kathail/uDown/main/scripts/run.sh -o udown.sh
+chmod +x udown.sh
+./udown.sh
+```
+
+The launcher generates an `APP_PASSWORD` + `SESSION_SECRET` on first run (stored
+in `~/.local/share/udown/env`, mode 0600), pulls the latest image, and starts
+the container on `http://localhost:8000`. The password is printed to the
+terminal. After logging in, paste your YouTube cookies into the cookies panel
+and start downloading.
+
 ## Deploying to Railway
 
 1. Push this repo to GitHub.
