@@ -3,6 +3,16 @@
     const downloadSection = document.getElementById("download-section");
     const loginError = document.getElementById("login-error");
 
+    // ---- random quote in the footer ticker ----
+    const quoteEl = document.getElementById("footer-quote");
+    if (quoteEl && Array.isArray(window.UDOWN_QUOTES) && window.UDOWN_QUOTES.length) {
+        const pick = window.UDOWN_QUOTES[Math.floor(Math.random() * window.UDOWN_QUOTES.length)];
+        const attribution = pick.w ? `${pick.a}, ` : pick.a;
+        quoteEl.innerHTML = `"${pick.q}" — ${attribution}` + (pick.w ? `<em>${pick.w}</em>` : "");
+        // full text on hover for long quotes that get truncated
+        quoteEl.title = `"${pick.q}" — ${pick.a}` + (pick.w ? `, ${pick.w}` : "");
+    }
+
     // ---- masthead clock — broadcast tick, separate spans so the colons can blink ----
     const clockEl = document.getElementById("meta-clock");
     const clockH = clockEl?.querySelector(".meta-clock__h");

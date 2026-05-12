@@ -577,6 +577,19 @@ body {
 .term-footer__cell--end {
     margin-left: auto;
     color: var(--phos);
+    flex-shrink: 0;
+}
+
+.term-footer__quote {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.term-footer__quote em {
+    font-style: italic;
 }
 
 /* ---- Responsive ------------------------------------------------------ */
