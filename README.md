@@ -54,6 +54,34 @@ the container on `http://localhost:8000`. The password is printed to the
 terminal. After logging in, paste your YouTube cookies into the cookies panel
 and start downloading.
 
+### One-click on Linux (desktop launcher)
+
+Download `udown.desktop`, mark it executable, double-click. The first time on
+GNOME/KDE the file manager asks you to confirm — right-click → **Allow
+Launching** (GNOME) or **Properties → Permissions → Is executable** (KDE).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Kathail/uDown/main/scripts/udown.desktop -o ~/Desktop/udown.desktop
+chmod +x ~/Desktop/udown.desktop
+```
+
+To make it show up in the app menu instead of just on the desktop:
+
+```bash
+mkdir -p ~/.local/share/applications
+cp ~/Desktop/udown.desktop ~/.local/share/applications/
+update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
+```
+
+Prereq: Docker installed and the user in the `docker` group. On Nobara/Fedora:
+
+```bash
+sudo dnf install -y moby-engine
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# log out and back in
+```
+
 ## Deploying to Railway
 
 1. Push this repo to GitHub.

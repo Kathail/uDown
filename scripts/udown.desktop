@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=uDown
+GenericName=YouTube → MP3 Downloader
+Comment=Self-hosted YouTube to MP3 zip downloader
+Exec=bash -c 'curl -fsSL https://raw.githubusercontent.com/Kathail/uDown/main/scripts/run.sh | bash; echo; read -n 1 -s -r -p "[press any key to close]"'
+Terminal=true
+Icon=multimedia-player
+Categories=AudioVideo;Audio;Network;
+Keywords=youtube;mp3;download;music;
+StartupNotify=true
